@@ -8,3 +8,4 @@
 #include <grevir/peripherals/time_poller.hpp>
 #include <grevir/peripherals/gpio/debounce.hpp>
 #include <grevir/peripherals/button_events.hpp>
+#include <grevir/peripherals/pwm_output.hpp>

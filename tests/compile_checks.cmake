@@ -24,3 +24,13 @@ add_custom_target(grevir_peripherals_claim_checks ALL
     -P "${CMAKE_CURRENT_SOURCE_DIR}/check_pin_claims.cmake"
   COMMENT "Checking resource claims on the extracted GPIO wrappers"
   VERBATIM)
+
+add_custom_target(grevir_peripherals_pwm_claim_checks ALL
+  COMMAND "${CMAKE_COMMAND}"
+    "-DCXX=${CMAKE_CXX_COMPILER}"
+    "-DINCLUDE_DIRS=$<TARGET_PROPERTY:grevir_peripherals_compile,INCLUDE_DIRECTORIES>"
+    "-DCASE_SOURCE=${CMAKE_CURRENT_SOURCE_DIR}/pwm_claim_probe.cpp"
+    "-DLOG_DIR=${CMAKE_CURRENT_BINARY_DIR}/claim-results"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/check_pwm_claims.cmake"
+  COMMENT "Checking combined PWM pin and timer claims"
+  VERBATIM)

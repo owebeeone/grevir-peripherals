@@ -24,6 +24,14 @@ struct Clock {
 using Pin = ardo::OutputPin<Backend, 3>;
 using Input = ardo::DebounceInput<ardo::InputPin<Backend, 4>, Clock, 10>;
 using Button = ardo::ButtonEventModule<Input, Clock>;
+struct PwmBackend {
+  static constexpr unsigned timer_bits = 8;
+  using Claims = ardo::ResourceClaim<ardo::HardwareTimer<1>>;
+  inline static std::uint8_t value = 0;
+  static void setPwm(std::uint8_t duty) { value = duty; }
+};
+using Pwm = ardo::HardwarePwm<Pin, PwmBackend, setl::LinearScalerSelector<16>>;
+struct PwmModule : ardo::ModuleBase<ardo::Parameters<Pwm>> {};
 struct Module : ardo::ModuleInstanceBase<Module, ardo::Parameters<Pin>> {
   ardo::TimePoller<unsigned, Clock> timer;
   void instanceSetup() {
@@ -68,5 +76,15 @@ int main() {
     return 5;
   }
   const setl::Period<int> duration(12);
-  return (duration / 3).get() == 4 ? 0 : 6;
+  if ((duration / 3).get() != 4) {
+    return 6;
+  }
+  Backend::configured = false;
+  ardo::Application<PwmModule>::runSetup();
+  Pwm::setPwm(65535);
+  if (!Backend::configured || PwmBackend::value != 255) {
+    return 7;
+  }
+  Pwm::pwm_pin.setPwmPin(32768);
+  return PwmBackend::value == 128 ? 0 : 8;
 }
