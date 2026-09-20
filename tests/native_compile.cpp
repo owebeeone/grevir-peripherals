@@ -15,11 +15,17 @@ struct Clock {
 using Input = ardo::InputPin<Backend, 1>;
 using Output = ardo::OutputPin<Backend, 2>;
 struct Module : ardo::ModuleBase<ardo::Parameters<Input, Output>> {};
+using Debounced = ardo::DebounceInput<Input, Clock, 10>;
+using Button = ardo::ButtonEventModule<Debounced, Clock>;
 using Sequence = ardo::Sequence<std::uint32_t, 10, 20>;
 void instantiate() {
   ardo::Application<Module>::runSetup();
   ardo::Application<Module>::runLoop();
   Output::set(Input::get());
+  ardo::Application<Button>::runSetup();
+  ardo::Application<Button>::runLoop();
+  Button::get();
+  Debounced::pin.getPin();
   ardo::TimePoller<unsigned, Clock> timer;
   timer.poll(Clock::TimeType::period_type(10));
   ardo::CyclicTimeSequencePoller<Sequence, Clock> cyclic;

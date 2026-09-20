@@ -6,18 +6,21 @@ foreach(directory IN LISTS INCLUDE_DIRS)
     list(APPEND flags "-I${directory}")
   endif()
 endforeach()
-# First prove the production input/output types work with distinct pins.
-foreach(pin IN ITEMS 2 1)
-  execute_process(COMMAND "${CXX}" ${flags} "-DOUTPUT_PIN=${pin}" "${CASE_SOURCE}"
-    RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE errors)
-  file(WRITE "${LOG_DIR}/pin-${pin}.log" "${output}${errors}")
-  if(pin EQUAL 2)
-    if(NOT result STREQUAL "0")
-      message(FATAL_ERROR "Distinct pin control failed:\n${output}${errors}")
+# Prove raw and debounced inputs accept distinct pins before checking conflicts.
+foreach(debounce IN ITEMS 0 1)
+  foreach(pin IN ITEMS 2 1)
+    execute_process(COMMAND "${CXX}" ${flags} "-DOUTPUT_PIN=${pin}"
+      "-DDEBOUNCE_INPUT=${debounce}" "${CASE_SOURCE}"
+      RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE errors)
+    file(WRITE "${LOG_DIR}/debounce-${debounce}-pin-${pin}.log" "${output}${errors}")
+    if(pin EQUAL 2)
+      if(NOT result STREQUAL "0")
+        message(FATAL_ERROR "Distinct pin control failed:\n${output}${errors}")
+      endif()
+    elseif(NOT result MATCHES "^[1-9][0-9]*$" OR
+        NOT errors MATCHES "static assertion failed[^\n]*Application has resource conflict")
+      message(FATAL_ERROR "Expected same-pin resource conflict, got ${result}:\n${output}${errors}")
     endif()
-  elseif(NOT result MATCHES "^[1-9][0-9]*$" OR
-      NOT errors MATCHES "static assertion failed[^\n]*Application has resource conflict")
-    message(FATAL_ERROR "Expected same-pin resource conflict, got ${result}:\n${output}${errors}")
-  endif()
+  endforeach()
 endforeach()
-message(STATUS "Peripheral pin probes: distinct pins accepted; shared input/output pin rejected")
+message(STATUS "Peripheral pin probes: raw/debounced inputs accept distinct pins and reject conflicts (2 valid, 2 invalid)")

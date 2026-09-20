@@ -1,8 +1,9 @@
 # Grevir Peripherals
 
-First portable GPIO and timing extraction from Ardoinus. This local development
+Portable GPIO, button handling and timing extracted from Ardoinus. This local development
 snapshot contains digital input/output pins, both open-drain variants, external
-pin claims, pin interfaces, elapsed-time polling and cyclic/finite period sequences.
+pin claims, pin interfaces, debounce, button events, elapsed-time polling and
+cyclic/finite period sequences.
 It depends on Grevir Base, Time and Core. Hardware validation is on hold.
 
 Include `<GrevirPeripherals.h>` or an individual `<grevir/peripherals/...hpp>`
@@ -39,6 +40,35 @@ schedule. `init()` restarts the time origin without resetting sequence state;
 legacy polling interval constraints. Pin claims still identify resources by pin
 number, independent of backend type; separate GPIO controllers are not modeled.
 
+## Debounce and button events
+
+```cpp
+using RawButton = ardo::InputPin<BoardGPIO, 2>;
+using StableButton = ardo::DebounceInput<RawButton, MillisecondClock, 10>;
+using Button = ardo::ButtonEventModule<StableButton, MillisecondClock>;
+using App = ardo::Application<Button>;
+// Call App::runSetup(), then regularly call App::runLoop() and Button::get().
+```
+
+`DebounceInput<InputPin, Clock, debounceTime = 300>` retains the raw pin's claims
+and optional virtual input interface. The interval is in **clock ticks**; a
+microsecond clock with 300 ticks matches the old default. Setup configures the pin,
+samples its initial level and clears pending transitions. A different sampled
+level must persist for **more than** the interval before acceptance. Returning to
+the accepted level cancels the pending change, fixing the old bounce-timer bug.
+Only observed samples count; transitions between reads are not detected.
+
+`ButtonEventModule<InputPin, Clock>` expects active-low input, normally debounced.
+It preserves the original click classifier: a held press emits `LongClick` at
+300 ms; release of a short press starts a 400 ms double-click window; a second
+press emits `DoubleClick`, otherwise expiry emits `Click`. Thresholds are converted
+into the supplied clock's units, which must represent those durations. The legacy
+decision order is retained: a sampled second press takes priority over timeout
+when both are observed in the same loop. Poll regularly. `get()` returns and clears
+the latest pending event (`None` when empty); this is one slot, not an event queue.
+Setup resets processing and pending events, making repeated application setup safe.
+The template's singleton storage is now defined in the header for linked consumers.
+
 ## Build and validation
 
 Install Base, Time and Core into a prefix first, then:
@@ -51,22 +81,23 @@ cmake --install build/native --prefix /your/grevir-install
 ```
 
 Consumers use `find_package(grevir-peripherals CONFIG REQUIRED)` and link
-`grevir::peripherals`. Six public headers compile independently, and concrete pin,
-application and poller types compile without Catch2. Compiler probes accept
-separate input/output pins and reject the same pin with the expected Core resource
-conflict diagnostic. `tests/installed-consumer` builds and runs against installed
+`grevir::peripherals`. Eight public headers compile independently, and concrete pin,
+application, debounce/button and poller types compile without Catch2. Compiler
+probes accept separate pins and reject same-pin conflicts for both raw and
+debounced inputs (two positive and two negative cases). `tests/installed-consumer` builds and runs against installed
 packages without sibling checkout includes.
 
 For host behavior tests, also install Grevir Test Support and provision Catch2
-3.8.1, then enable `GREVIR_BUILD_HOST_TESTS=ON` and run CTest. Ten cases execute the
+3.8.1, then enable `GREVIR_BUILD_HOST_TESTS=ON` and run CTest. Nineteen cases execute the
 production wrappers/pollers using a recorded GPIO backend and controlled 32-bit
 clock: input modes, writes, both open-drain variants, external pin lifecycle,
 strict expiry, catch-up, wraparound, reset, cyclic/finite sequences and a composed
-blinking application. Mocks record software operations; they do not model pull-up
+blinking application. Additional cases cover bouncing presses/releases, startup,
+repeat setup, single/double/long clicks and microsecond-clock thresholds across
+wraparound. Mocks record software operations; they do not model pull-up
 voltages, electrical behavior, interrupt timing or MCU registers.
 
-Debounce, button events, the separate sequencer, PWM, timer selection and storage
-regions remain planned. MCU adapters and board validation remain deferred.
+The separate sequencer, PWM, timer selection and storage regions remain planned. MCU adapters and board validation remain deferred.
 
 Source: [owebeeone/ardoinus](https://github.com/owebeeone/ardoinus). The original
 MIT license notice is copied unchanged in `LICENSE.txt`.
