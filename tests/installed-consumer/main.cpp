@@ -1,5 +1,6 @@
 #include <GrevirPeripherals.h>
 #include <cstdint>
+#include <array>
 
 namespace {
 struct Backend {
@@ -32,6 +33,24 @@ struct PwmBackend {
 };
 using Pwm = ardo::HardwarePwm<Pin, PwmBackend, setl::LinearScalerSelector<16>>;
 struct PwmModule : ardo::ModuleBase<ardo::Parameters<Pwm>> {};
+struct StorageBackend {
+  using Resource = ardo::EepromResource;
+  static constexpr std::size_t capacity = 16;
+  inline static std::array<std::uint8_t, capacity> bytes{};
+  static std::uint8_t read(std::size_t address) { return bytes.at(address); }
+  static void update(std::size_t address, std::uint8_t value) { bytes.at(address) = value; }
+};
+using SavedValue = ardo::EepromReaderWriter<std::uint32_t, 12, StorageBackend>;
+struct TimerBackend {
+  using AllowedParameters = ardo::timers::ParameterClasses<
+    ardo::timers::ParameterClass::frequency, ardo::timers::ParameterClass::resolution>;
+  template <typename Config>
+  static constexpr bool accepts = std::is_same_v<typename Config::Parameters,
+    std::tuple<ardo::timers::Frequency<1000>, ardo::timers::Resolution<8>>>;
+};
+using Checked = ardo::timers::CheckedTimerConfig<TimerBackend,
+  ardo::timers::TimerConfig<ardo::timers::Frequency<1000>, ardo::timers::Resolution<8>>>;
+static_assert(std::tuple_size_v<typename Checked::Parameters> == 2);
 struct Module : ardo::ModuleInstanceBase<Module, ardo::Parameters<Pin>> {
   ardo::TimePoller<unsigned, Clock> timer;
   void instanceSetup() {
@@ -86,5 +105,12 @@ int main() {
     return 7;
   }
   Pwm::pwm_pin.setPwmPin(32768);
-  return PwmBackend::value == 128 ? 0 : 8;
+  if (PwmBackend::value != 128) {
+    return 8;
+  }
+  SavedValue::write(0xff807f01u);
+  if (StorageBackend::bytes[11] != 0) {
+    return 9;
+  }
+  return SavedValue::read() == 0xff807f01u ? 0 : 10;
 }

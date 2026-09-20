@@ -9,3 +9,5 @@
 #include <grevir/peripherals/gpio/debounce.hpp>
 #include <grevir/peripherals/button_events.hpp>
 #include <grevir/peripherals/pwm_output.hpp>
+#include <grevir/peripherals/storage_region.hpp>
+#include <grevir/peripherals/timer/requirements.hpp>

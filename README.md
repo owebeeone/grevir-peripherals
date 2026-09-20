@@ -3,7 +3,8 @@
 Portable GPIO, button handling and timing extracted from Ardoinus. This local development
 snapshot contains digital input/output pins, both open-drain variants, external
 pin claims, pin interfaces, debounce, button events, elapsed-time polling and
-cyclic/finite period sequences, and a backend-bound PWM wrapper.
+cyclic/finite period sequences, a backend-bound PWM wrapper, typed storage regions
+and portable timer requirements.
 It depends on Grevir Base, Time and Core. Hardware validation is on hold.
 
 Include `<GrevirPeripherals.h>` or an individual `<grevir/peripherals/...hpp>`
@@ -103,6 +104,56 @@ The unused `ardo_sequencer.h` mapping is superseded by `time_poller.hpp`. No sep
 unchanged; no C/C++ callers were found. Use the extracted `ardo` poller types with
 explicit clock/tick bindings.
 
+## Typed storage regions
+
+`EepromReaderWriter<T, Address, Backend>` reads/writes a trivially copyable value in
+an explicitly bound byte store. The backend supplies:
+
+- `using Resource = ...`: the physical store's resource identity. Multiple adapters
+  for the same store must share this type; independent stores use different types.
+  `ardo::EepromResource` remains available for a single EEPROM store.
+- `static constexpr std::size_t capacity`: capacity in bytes.
+- Static `read(address)` returning a byte and `update(address, byte)` writing it.
+  Avoiding writes to unchanged bytes is the backend's responsibility.
+
+The region claims `[Address, Address + sizeof(T))`. Negative addresses, capacity
+violations, unrepresentable claim endpoints and nontrivial value types fail at
+compile time. The exclusive end must fit Core's signed `int` range representation.
+Same-store overlaps conflict; adjacent regions and regions in distinct stores do
+not. Setup/loop perform no I/O.
+
+The extracted write operation sends each **byte value**, fixing the legacy pointer
+argument to `EEPROM.update`. Reads/writes preserve native object representation,
+including its byte order and any padding. This is not cross-platform serialization;
+read bytes must be a valid representation of `T`, and `read()` also needs `T{}`.
+No Arduino EEPROM provider is imported; that adapter remains a separate extraction.
+
+## Portable timer requirements
+
+`timer/requirements.hpp` provides `Frequency<Hertz, Divider = 1, Type = float>`,
+`VariableFrequency<...>`, `Resolution<Bits>`, `TimerConfig<Requests...>`, parameter
+classes and the existing explicit `TimerConfigFilter`. The portable enum contains
+only frequency, variable frequency and resolution. AVR modes/pin options and default
+board inventory are absent. `VariableFrequency::is_variable` is now true, correcting
+its inherited false value. Zero frequency/divider/resolution and repeated or
+conflicting frequency/resolution requests are rejected when instantiated.
+
+Use `CheckedTimerConfig<Backend, Config>::Config` to validate mandatory requests.
+The backend supplies `AllowedParameters::BaseTypes` (usually through
+`ParameterClasses<...>`) and `template<typename Config> static constexpr bool
+accepts`. The latter checks the complete configuration's values and combinations,
+including required missing settings. Unsupported categories and rejected combinations
+produce explicit diagnostics. The checked wrapper preserves every supplied request.
+
+`TimerConfigFilter<Allowed, Config>::Config` retains deliberate projection to a
+`std::tuple`; it does not prove that the original request is supported. Do not
+substitute that filter for `CheckedTimerConfig` when requirements are mandatory.
+
+This increment validates an explicitly chosen backend. It does not assign timers,
+apply registers, calculate MCU prescalers, or implement the old pass-through
+`TimerSelector`/`SelectionResolver` scaffolding. `timer/selection.hpp` remains planned.
+Synthetic backend tests validate this contract, not any actual timer capability.
+
 ## Build and validation
 
 Install Base, Time and Core into a prefix first, then:
@@ -115,14 +166,14 @@ cmake --install build/native --prefix /your/grevir-install
 ```
 
 Consumers use `find_package(grevir-peripherals CONFIG REQUIRED)` and link
-`grevir::peripherals`. Nine public headers compile independently, and concrete pin,
-application, debounce/button, PWM and poller types compile without Catch2. Compiler
+`grevir::peripherals`. Eleven public headers compile independently, and concrete pin,
+application, debounce/button, PWM, storage and poller types compile without Catch2. Compiler
 probes accept separate pins and reject same-pin conflicts for both raw and
 debounced inputs (two positive and two negative cases). `tests/installed-consumer` builds and runs against installed
 packages without sibling checkout includes.
 
 For host behavior tests, also install Grevir Test Support and provision Catch2
-3.8.1, then enable `GREVIR_BUILD_HOST_TESTS=ON` and run CTest. Twenty-four cases execute the
+3.8.1, then enable `GREVIR_BUILD_HOST_TESTS=ON` and run CTest. Twenty-nine cases execute the
 production wrappers/pollers using a recorded GPIO backend and controlled 32-bit
 clock: input modes, writes, both open-drain variants, external pin lifecycle,
 strict expiry, catch-up, wraparound, reset, cyclic/finite sequences and a composed
@@ -131,10 +182,16 @@ repeat setup, single/double/long clicks and microsecond-clock thresholds across
 wraparound. Five PWM cases check scaling up/down, equal resolutions, the optional
 virtual interface and pin lifecycle forwarding. PWM compiler probes pass two valid
 compositions and reject six pin/timer/range conflicts with the intended diagnostics.
+Five storage cases cover object bytes, offsets, untouched neighbors, update
+semantics, adjacent/end-of-store regions and lifecycle. Storage compiler probes pass
+three positive cases and reject eight invalid types/regions/claims. Timer contracts
+have twelve static assertions, two positive backend configurations and twelve
+expected rejections, including invalid values, unsupported categories and combinations.
 Mocks record software operations; they do not model pull-up
 voltages, electrical behavior, interrupt timing or MCU registers.
 
-Timer selection and storage regions remain planned. MCU adapters and board validation remain deferred.
+Timer inventory selection/allocation, MCU/Arduino adapters and board validation
+remain deferred.
 
 Source: [owebeeone/ardoinus](https://github.com/owebeeone/ardoinus). The original
 MIT license notice is copied unchanged in `LICENSE.txt`.
