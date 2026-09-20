@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.20)
+project(grevir_peripherals_consumer LANGUAGES CXX)
+find_package(grevir-peripherals CONFIG REQUIRED)
+add_executable(grevir_peripherals_consumer main.cpp)
+target_link_libraries(grevir_peripherals_consumer PRIVATE grevir::peripherals)
+set_target_properties(grevir_peripherals_consumer PROPERTIES CXX_EXTENSIONS OFF)
