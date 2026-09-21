@@ -195,3 +195,13 @@ remain deferred.
 
 Source: [owebeeone/ardoinus](https://github.com/owebeeone/ardoinus). The original
 MIT license notice is copied unchanged in `LICENSE.txt`.
+
+## Installed portable PWM integration
+
+The fixed-frequency ATmega328P PWM MVP now uses installed Core, Peripherals and AVR
+headers. Core collects module requests and existing resource claims; AVR supplies
+candidates and typed endpoints. Application setup initializes the selected owners
+before parameter/module callbacks. See the workspace's
+`dev-docs/GrevirPwmIntegration.md` for the complete example, resource identity rules,
+startup preconditions and current limits. AVR compiler/hardware validation remains
+on hold; native package installation does not establish MCU toolchain support.

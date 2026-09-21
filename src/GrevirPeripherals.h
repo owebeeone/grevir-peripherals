@@ -11,3 +11,4 @@
 #include <grevir/peripherals/pwm_output.hpp>
 #include <grevir/peripherals/storage_region.hpp>
 #include <grevir/peripherals/timer/requirements.hpp>
+#include <grevir/peripherals/pwm/requirements.hpp>
