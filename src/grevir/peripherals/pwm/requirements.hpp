@@ -1,9 +1,9 @@
 #pragma once
 #include <grevir/peripherals/pwm/frequency_window.hpp>
-#include <array>
-#include <compare>
-#include <cstddef>
-#include <string_view>
+#include <grevir/base/compat/array.hpp>
+#include <grevir/base/compat/compare.hpp>
+#include <grevir/base/compat/cstddef.hpp>
+#include <grevir/base/compat/string_view.hpp>
 
 namespace grevir::pwm {
 

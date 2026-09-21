@@ -1,6 +1,6 @@
 #pragma once
-#include <cstdint>
-#include <numeric>
+#include <grevir/base/compat/cstdint.hpp>
+#include <grevir/base/compat/numeric.hpp>
 
 namespace grevir::pwm {
 

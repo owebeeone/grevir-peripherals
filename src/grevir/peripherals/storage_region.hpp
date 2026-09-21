@@ -4,8 +4,8 @@
 #include <grevir/base/compat/cstdint.hpp>
 #include <grevir/base/compat/type_traits.hpp>
 #include <grevir/core/resource_claims.hpp>
-#include <cstddef>
-#include <limits>
+#include <grevir/base/compat/cstddef.hpp>
+#include <grevir/base/compat/limits.hpp>
 
 namespace ardo {
 

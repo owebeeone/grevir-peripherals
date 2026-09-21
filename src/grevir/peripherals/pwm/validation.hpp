@@ -1,6 +1,6 @@
 #pragma once
 #include <grevir/peripherals/pwm/model.hpp>
-#include <algorithm>
+#include <grevir/base/compat/algorithm.hpp>
 
 namespace grevir::pwm {
 

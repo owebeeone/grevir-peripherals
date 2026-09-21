@@ -1,7 +1,7 @@
 #pragma once
 #include <grevir/peripherals/pwm/requirements.hpp>
-#include <array>
-#include <tuple>
+#include <grevir/base/compat/array.hpp>
+#include <grevir/base/compat/tuple.hpp>
 
 namespace grevir::pwm {
 
