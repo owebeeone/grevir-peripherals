@@ -1,5 +1,15 @@
 # Grevir Peripherals
 
+**Public API:** [Grevir Peripherals](https://github.com/owebeeone/grevir-wz/blob/main/docs/api/peripherals.md).
+See [installation](https://github.com/owebeeone/grevir-wz/blob/main/docs/install.md) and
+[supported platforms](https://github.com/owebeeone/grevir-wz/blob/main/docs/supported.md).
+The workspace `/docs` is the current user-facing contract; development
+checkpoints below are historical.
+
+Portable GPIO, polling, buttons, storage and timer requirements.
+
+## Development record (historical)
+
 Portable GPIO, button handling and timing extracted from Ardoinus. This local development
 snapshot contains digital input/output pins, both open-drain variants, external
 pin claims, pin interfaces, debounce, button events, elapsed-time polling and
