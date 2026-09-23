@@ -18,7 +18,7 @@ endif()
 add_custom_target(grevir_peripherals_claim_checks ALL
   COMMAND "${CMAKE_COMMAND}"
     "-DCXX=${CMAKE_CXX_COMPILER}"
-      "-DCOMPILER_ID=${CMAKE_CXX_COMPILER_ID}"
+    "-DCOMPILER_ID=${CMAKE_CXX_COMPILER_ID}"
     "-DINCLUDE_DIRS=$<TARGET_PROPERTY:grevir_peripherals_compile,INCLUDE_DIRECTORIES>"
     "-DCASE_SOURCE=${CMAKE_CURRENT_SOURCE_DIR}/pin_claim_probe.cpp"
     "-DLOG_DIR=${CMAKE_CURRENT_BINARY_DIR}/claim-results"
@@ -29,7 +29,7 @@ add_custom_target(grevir_peripherals_claim_checks ALL
 add_custom_target(grevir_peripherals_pwm_claim_checks ALL
   COMMAND "${CMAKE_COMMAND}"
     "-DCXX=${CMAKE_CXX_COMPILER}"
-      "-DCOMPILER_ID=${CMAKE_CXX_COMPILER_ID}"
+    "-DCOMPILER_ID=${CMAKE_CXX_COMPILER_ID}"
     "-DINCLUDE_DIRS=$<TARGET_PROPERTY:grevir_peripherals_compile,INCLUDE_DIRECTORIES>"
     "-DCASE_SOURCE=${CMAKE_CURRENT_SOURCE_DIR}/pwm_claim_probe.cpp"
     "-DLOG_DIR=${CMAKE_CURRENT_BINARY_DIR}/claim-results"
@@ -40,7 +40,7 @@ add_custom_target(grevir_peripherals_pwm_claim_checks ALL
 add_custom_target(grevir_peripherals_storage_timer_checks ALL
   COMMAND "${CMAKE_COMMAND}"
     "-DCXX=${CMAKE_CXX_COMPILER}"
-      "-DCOMPILER_ID=${CMAKE_CXX_COMPILER_ID}"
+    "-DCOMPILER_ID=${CMAKE_CXX_COMPILER_ID}"
     "-DINCLUDE_DIRS=$<TARGET_PROPERTY:grevir_peripherals_compile,INCLUDE_DIRECTORIES>"
     "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
     "-DLOG_DIR=${CMAKE_CURRENT_BINARY_DIR}/claim-results"
