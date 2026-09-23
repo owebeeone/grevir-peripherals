@@ -12,12 +12,13 @@ add_library(grevir_peripherals_compile OBJECT native_compile.cpp timer_config_st
 target_link_libraries(grevir_peripherals_compile PRIVATE grevir::peripherals)
 set_target_properties(grevir_peripherals_compile PROPERTIES CXX_EXTENSIONS OFF)
 
-if(NOT CMAKE_CXX_COMPILER_ID MATCHES "^(AppleClang|Clang|GNU)$")
-  message(FATAL_ERROR "Peripheral conflict probes currently require a Clang/GNU driver")
+if(NOT CMAKE_CXX_COMPILER_ID MATCHES "^(AppleClang|Clang|GNU|MSVC)$")
+  message(FATAL_ERROR "Peripheral conflict probes require a supported C++ compiler driver")
 endif()
 add_custom_target(grevir_peripherals_claim_checks ALL
   COMMAND "${CMAKE_COMMAND}"
     "-DCXX=${CMAKE_CXX_COMPILER}"
+      "-DCOMPILER_ID=${CMAKE_CXX_COMPILER_ID}"
     "-DINCLUDE_DIRS=$<TARGET_PROPERTY:grevir_peripherals_compile,INCLUDE_DIRECTORIES>"
     "-DCASE_SOURCE=${CMAKE_CURRENT_SOURCE_DIR}/pin_claim_probe.cpp"
     "-DLOG_DIR=${CMAKE_CURRENT_BINARY_DIR}/claim-results"
@@ -28,6 +29,7 @@ add_custom_target(grevir_peripherals_claim_checks ALL
 add_custom_target(grevir_peripherals_pwm_claim_checks ALL
   COMMAND "${CMAKE_COMMAND}"
     "-DCXX=${CMAKE_CXX_COMPILER}"
+      "-DCOMPILER_ID=${CMAKE_CXX_COMPILER_ID}"
     "-DINCLUDE_DIRS=$<TARGET_PROPERTY:grevir_peripherals_compile,INCLUDE_DIRECTORIES>"
     "-DCASE_SOURCE=${CMAKE_CURRENT_SOURCE_DIR}/pwm_claim_probe.cpp"
     "-DLOG_DIR=${CMAKE_CURRENT_BINARY_DIR}/claim-results"
@@ -38,6 +40,7 @@ add_custom_target(grevir_peripherals_pwm_claim_checks ALL
 add_custom_target(grevir_peripherals_storage_timer_checks ALL
   COMMAND "${CMAKE_COMMAND}"
     "-DCXX=${CMAKE_CXX_COMPILER}"
+      "-DCOMPILER_ID=${CMAKE_CXX_COMPILER_ID}"
     "-DINCLUDE_DIRS=$<TARGET_PROPERTY:grevir_peripherals_compile,INCLUDE_DIRECTORIES>"
     "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
     "-DLOG_DIR=${CMAKE_CURRENT_BINARY_DIR}/claim-results"

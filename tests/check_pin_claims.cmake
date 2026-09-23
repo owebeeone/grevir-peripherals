@@ -1,16 +1,24 @@
 cmake_minimum_required(VERSION 3.20)
 file(MAKE_DIRECTORY "${LOG_DIR}")
-set(flags -std=c++23 -DHAS_STD_LIB=1 -fsyntax-only)
+if(COMPILER_ID STREQUAL "MSVC")
+  set(flags /nologo /std:c++latest /Zc:__cplusplus /Zs /DHAS_STD_LIB=1)
+  set(include_flag /I)
+  set(define_flag /D)
+else()
+  set(flags -std=c++23 -DHAS_STD_LIB=1 -fsyntax-only)
+  set(include_flag -I)
+  set(define_flag -D)
+endif()
 foreach(directory IN LISTS INCLUDE_DIRS)
   if(NOT directory STREQUAL "")
-    list(APPEND flags "-I${directory}")
+    list(APPEND flags "${include_flag}${directory}")
   endif()
 endforeach()
 # Prove raw and debounced inputs accept distinct pins before checking conflicts.
 foreach(debounce IN ITEMS 0 1)
   foreach(pin IN ITEMS 2 1)
-    execute_process(COMMAND "${CXX}" ${flags} "-DOUTPUT_PIN=${pin}"
-      "-DDEBOUNCE_INPUT=${debounce}" "${CASE_SOURCE}"
+    execute_process(COMMAND "${CXX}" ${flags} "${define_flag}OUTPUT_PIN=${pin}"
+      "${define_flag}DEBOUNCE_INPUT=${debounce}" "${CASE_SOURCE}"
       RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE errors)
     file(WRITE "${LOG_DIR}/debounce-${debounce}-pin-${pin}.log" "${output}${errors}")
     if(pin EQUAL 2)
@@ -18,7 +26,7 @@ foreach(debounce IN ITEMS 0 1)
         message(FATAL_ERROR "Distinct pin control failed:\n${output}${errors}")
       endif()
     elseif(NOT result MATCHES "^[1-9][0-9]*$" OR
-        NOT errors MATCHES "static assertion failed[^\n]*Application has resource conflict")
+        NOT "${output}${errors}" MATCHES "(static assertion failed|static_assert failed)[^\n]*Application has resource conflict")
       message(FATAL_ERROR "Expected same-pin resource conflict, got ${result}:\n${output}${errors}")
     endif()
   endforeach()
