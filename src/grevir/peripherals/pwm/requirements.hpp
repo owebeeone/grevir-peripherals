@@ -79,7 +79,7 @@ constexpr bool matches(Target resident, Target section) {
 }
 
 template <typename T>
-constexpr void constrain(Config& config, T& field, T unset, T value) {
+constexpr void merge_constraint(Config& config, T& field, T unset, T value) {
   if (field != unset && field != value) { config.fail(ConfigError::conflict); }
   field = value;
 }
@@ -136,7 +136,7 @@ template <Target Resident, unsigned P>
 struct Apply<Resident, Pin<P>> {
   static constexpr void run(Config& c) {
     if constexpr (P == 0) { c.fail(ConfigError::invalid_value); }
-    else { constrain(c, c.pin, 0u, P); }
+    else { merge_constraint(c, c.pin, 0u, P); }
   }
 };
 
@@ -144,7 +144,7 @@ template <Target Resident, Waveform W>
 struct AvrWaveform {
   static constexpr void run(Config& c) {
     if constexpr (!matches(Resident, Target::avr)) { c.fail(ConfigError::unsupported_option); }
-    else { constrain(c, c.waveform, Waveform::any, W); }
+    else { merge_constraint(c, c.waveform, Waveform::any, W); }
   }
 };
 template <Target R> struct Apply<R, avr::FastPwm> : AvrWaveform<R, Waveform::fast> {};
@@ -152,7 +152,7 @@ template <Target R> struct Apply<R, avr::PhaseCorrectPwm> : AvrWaveform<R, Wavef
 template <Target R, Source S> struct AvrSource {
   static constexpr void run(Config& c) {
     if constexpr (!matches(R, Target::avr)) { c.fail(ConfigError::unsupported_option); }
-    else { constrain(c, c.source, Source::any, S); }
+    else { merge_constraint(c, c.source, Source::any, S); }
   }
 };
 template <Target R> struct Apply<R, avr::TopFromIcr> : AvrSource<R, Source::icr> {};
@@ -161,7 +161,7 @@ template <Target R> struct Apply<R, avr::TopFromOcra> : AvrSource<R, Source::ocr
 template <Target R> struct Apply<R, esp32::ApbClock> {
   static constexpr void run(Config& c) {
     if constexpr (R != Target::esp32) { c.fail(ConfigError::unsupported_option); }
-    else { constrain(c, c.source, Source::any, Source::apb); }
+    else { merge_constraint(c, c.source, Source::any, Source::apb); }
   }
 };
 

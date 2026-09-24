@@ -24,7 +24,7 @@ public:
   static_assert(Address >= 0, "GREVIR_STORAGE_NEGATIVE_ADDRESS");
   static constexpr std::uint64_t end_address =
     std::uint64_t(Address >= 0 ? Address : 0) + sizeof(T);
-  static_assert(end_address <= std::numeric_limits<int>::max(),
+  static_assert(end_address <= (std::numeric_limits<int>::max)(),
     "GREVIR_STORAGE_CLAIM_RANGE_OVERFLOW");
   static_assert(end_address <= Backend::capacity,
     "GREVIR_STORAGE_REGION_EXCEEDS_CAPACITY");

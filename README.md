@@ -7,6 +7,9 @@ The workspace `/docs` is the current user-facing contract; development
 checkpoints below are historical.
 
 Portable GPIO, polling, buttons, storage and timer requirements.
+The interrupt-bearing timer candidate solver supports deterministic
+period-event selection and PWM coexistence/conflict; see the
+[interrupt guide](https://github.com/owebeeone/grevir-wz/blob/main/docs/guides/interrupts.md).
 
 ## Development record (historical)
 
