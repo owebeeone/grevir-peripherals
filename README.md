@@ -164,7 +164,7 @@ substitute that filter for `CheckedTimerConfig` when requirements are mandatory.
 
 This increment validates an explicitly chosen backend. It does not assign timers,
 apply registers, calculate MCU prescalers, or implement the old pass-through
-`TimerSelector`/`SelectionResolver` scaffolding. `timer/selection.hpp` remains planned.
+`TimerSelector` scaffolding. `timer/selection.hpp` remains planned.
 Synthetic backend tests validate this contract, not any actual timer capability.
 
 ## Build and validation
