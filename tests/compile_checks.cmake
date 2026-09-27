@@ -8,7 +8,8 @@ foreach(header IN LISTS public_headers)
   file(WRITE "${source}" "#include <${header}>\n")
   list(APPEND header_sources "${source}")
 endforeach()
-add_library(grevir_peripherals_compile OBJECT native_compile.cpp timer_config_static_tests.cpp ${header_sources})
+add_library(grevir_peripherals_compile OBJECT native_compile.cpp timer_config_static_tests.cpp
+  timer_owner_static_tests.cpp ${header_sources})
 target_link_libraries(grevir_peripherals_compile PRIVATE grevir::peripherals)
 set_target_properties(grevir_peripherals_compile PROPERTIES CXX_EXTENSIONS OFF)
 

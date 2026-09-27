@@ -5,17 +5,12 @@
 #include <grevir/base/compat/cstddef.hpp>
 #include <grevir/base/compat/string_view.hpp>
 #include <grevir/base/compat/type_traits.hpp>
+#include <grevir/base/text.hpp>
+#include <grevir/peripherals/timer/own.hpp>
 
 namespace grevir::pwm {
 
-template <std::size_t N>
-struct Text {
-  char value[N];
-  constexpr Text(const char (&input)[N]) {
-    for (std::size_t i = 0; i < N; ++i) { value[i] = input[i]; }
-  }
-  constexpr std::string_view view() const { return {value, N - 1}; }
-};
+using grevir::Text;
 
 struct Key {
   std::string_view instance;
@@ -32,7 +27,7 @@ constexpr bool identifier(std::string_view value) {
   return true;
 }
 
-enum class Target { avr, atmega328p, esp32 };
+using Target = timer::Target;
 enum class Waveform { any, fast, phase_correct };
 enum class Source { any, icr, apb, built_in, ocra };
 enum class ConfigError { none, invalid_value, unsupported_option, conflict };
@@ -59,20 +54,22 @@ template <std::uint32_t Ppm> struct WithinPpm {};
 template <typename Rate, typename Accuracy> struct Frequency {};
 template <std::uint32_t N, std::uint32_t D> struct DutyStepAtMost {};
 template <unsigned Physical> struct Pin {};
-template <Target T, typename... Options> struct For {};
-template <unsigned Bits> struct CounterBitsAtLeast {};
+template <Target T, typename... Options> using For = timer::For<T, Options...>;
+template <unsigned Bits> using CounterBitsAtLeast = timer::CounterBitsAtLeast<Bits>;
 namespace atmega328p {
-struct Timer0 {};
-struct Timer1 {};
-struct Timer2 {};
+using Timer0 = timer::atmega328p::Timer0;
+using Timer1 = timer::atmega328p::Timer1;
+using Timer2 = timer::atmega328p::Timer2;
 }
-template <typename Timer> struct RequireTimer {};
+template <typename Timer> using RequireTimer = timer::RequireTimer<Timer>;
 namespace avr { struct FastPwm {}; struct PhaseCorrectPwm {}; struct TopFromIcr {}; struct BuiltInTop {}; struct TopFromOcra {}; }
 namespace esp32 { struct ApbClock {}; }
 
 template <Text Name, typename... Options>
 struct PwmRequest {
   inline static constexpr auto name = Name;
+  static constexpr bool is_timer_use = true;
+  static constexpr timer::UseKind kind = timer::UseKind::pwm;
   template <typename F> static constexpr void visit(F&& f) {
     (f(static_cast<Options*>(nullptr)), ...);
   }
@@ -213,6 +210,8 @@ template <Target R> struct Apply<R, esp32::ApbClock> {
 
 template <Target Resident, typename I, typename Use>
 constexpr Request request() {
+  static_assert(IsPwmRequest<Use>::value,
+    "GREVIR_PWM_BACKEND_UNSUPPORTED_TIMER_USE");
   Config config;
   I::visit_options([&]<typename O>(O*) { Apply<Resident, O>::run(config); });
   Use::visit([&]<typename O>(O*) { Apply<Resident, O>::run(config); });
