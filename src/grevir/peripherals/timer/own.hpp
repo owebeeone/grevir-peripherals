@@ -17,9 +17,10 @@ struct Timer2 {};
 template <typename DeviceTimer> struct RequireTimer {};
 
 template <typename T, typename = void> struct IsUse : std::false_type {};
+template <typename...> using Void = void;
 template <typename T>
-struct IsUse<T, std::void_t<decltype(T::is_timer_use)>>
-  : std::bool_constant<T::is_timer_use> {};
+struct IsUse<T, Void<decltype(T::is_timer_use)>>
+  : std::integral_constant<bool, T::is_timer_use> {};
 
 // This declares an owner-local period event, independently of any PWM pin.
 // A backend without a joint event/PWM candidate must reject the active use.
