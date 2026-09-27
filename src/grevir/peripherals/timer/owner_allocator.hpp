@@ -138,22 +138,24 @@ constexpr bool fits(const P& p, const Candidate& c, std::string_view owner) {
   return matched == c.binding_count;
 }
 
+template <typename F>
+constexpr void each_resource(const Candidate& candidate, F&& f) {
+  f(candidate.timer);
+  for (unsigned i = 0; i < candidate.binding_count; ++i) {
+    f(candidate.bindings[i].endpoint);
+    if (candidate.bindings[i].pin != 0) { f(candidate.bindings[i].pin); }
+  }
+  for (unsigned i = 0; i < candidate.role_count; ++i) {
+    f(candidate.exclusive_roles[i]);
+  }
+}
+
 constexpr bool compatible(const Candidate& a, const Candidate& b) {
-  if (a.timer == b.timer) { return false; }
-  for (unsigned i = 0; i < a.binding_count; ++i) {
-    for (unsigned j = 0; j < b.binding_count; ++j) {
-      if (a.bindings[i].endpoint == b.bindings[j].endpoint
-          || (a.bindings[i].pin != 0 && a.bindings[i].pin == b.bindings[j].pin)) {
-        return false;
-      }
-    }
-  }
-  for (unsigned i = 0; i < a.role_count; ++i) {
-    for (unsigned j = 0; j < b.role_count; ++j) {
-      if (a.exclusive_roles[i] == b.exclusive_roles[j]) { return false; }
-    }
-  }
-  return true;
+  bool overlaps = false;
+  each_resource(a, [&](unsigned left) {
+    each_resource(b, [&](unsigned right) { overlaps |= left == right; });
+  });
+  return !overlaps;
 }
 
 template <std::size_t D, std::size_t C, std::size_t R>
@@ -205,15 +207,9 @@ constexpr Plan<D> solve(Problem<D, C, R> p, std::uint32_t budget = 100'000) {
       if (!fits(p, p.candidates[c], p.demands[first[u]].key.owner)) { continue; }
       bool reserved = false;
       for (unsigned r : p.reservations) {
-        reserved = reserved || r == p.candidates[c].timer;
-        for (unsigned j = 0; j < p.candidates[c].binding_count; ++j) {
-          const auto& binding = p.candidates[c].bindings[j];
-          reserved = reserved || r == binding.endpoint
-            || (binding.pin != 0 && r == binding.pin);
-        }
-        for (unsigned j = 0; j < p.candidates[c].role_count; ++j) {
-          reserved = reserved || r == p.candidates[c].exclusive_roles[j];
-        }
+        each_resource(p.candidates[c], [&](unsigned occupied) {
+          reserved |= r == occupied;
+        });
       }
       if (reserved) { blocked = p.candidates[c].timer; }
       else { eligible[u][c] = true; any = true; }

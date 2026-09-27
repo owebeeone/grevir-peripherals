@@ -50,6 +50,25 @@ static_assert(t::compile(t::Problem{t::demands<Drive>(),
 static_assert(t::compile(t::Problem{t::demands<Clock,Drive>(),
   std::array{drive,clock},std::array{301u}}).diagnostic.status == t::Status::reserved);
 
+constexpr auto clock_role_on_drive_pin = [] {
+  auto candidate = clock;
+  candidate.exclusive_roles[0] = drive.bindings[0].pin;
+  return candidate;
+}();
+constexpr auto clock_role_on_drive_endpoint = [] {
+  auto candidate = clock;
+  candidate.exclusive_roles[0] = drive.bindings[0].endpoint;
+  return candidate;
+}();
+static_assert(!t::compatible(clock_role_on_drive_pin,drive));
+static_assert(!t::compatible(drive,clock_role_on_drive_endpoint));
+static_assert(t::compile(t::Problem{input,
+  std::array{clock_role_on_drive_pin,drive},std::array<unsigned,0>{}})
+  .diagnostic.status == t::Status::conflict);
+static_assert(t::compile(t::Problem{t::demands<Clock,Drive>(),
+  std::array{drive,clock_role_on_drive_endpoint},std::array<unsigned,0>{}})
+  .diagnostic.status == t::Status::conflict);
+
 constexpr auto bad_role = [] {
   auto candidate = drive;
   candidate.exclusive_roles[1] = candidate.exclusive_roles[0];
