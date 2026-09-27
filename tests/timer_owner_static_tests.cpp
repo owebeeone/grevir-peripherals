@@ -41,6 +41,15 @@ constexpr auto event_only = t::compile(t::Problem{
   t::demands<Clock>(),std::array{clock},std::array<unsigned,0>{}});
 static_assert(event_only.ok());
 
+static_assert(t::compile(t::Problem{t::demands<Drive>(),
+  std::array{drive},std::array{301u}}).diagnostic.status == t::Status::reserved);
+static_assert(t::compile(t::Problem{t::demands<Drive>(),
+  std::array{drive},std::array{201u}}).diagnostic.status == t::Status::reserved);
+static_assert(t::compile(t::Problem{t::demands<Drive>(),
+  std::array{drive},std::array{999u}}).ok());
+static_assert(t::compile(t::Problem{t::demands<Clock,Drive>(),
+  std::array{drive,clock},std::array{301u}}).diagnostic.status == t::Status::reserved);
+
 constexpr auto bad_role = [] {
   auto candidate = drive;
   candidate.exclusive_roles[1] = candidate.exclusive_roles[0];

@@ -206,6 +206,11 @@ constexpr Plan<D> solve(Problem<D, C, R> p, std::uint32_t budget = 100'000) {
       bool reserved = false;
       for (unsigned r : p.reservations) {
         reserved = reserved || r == p.candidates[c].timer;
+        for (unsigned j = 0; j < p.candidates[c].binding_count; ++j) {
+          const auto& binding = p.candidates[c].bindings[j];
+          reserved = reserved || r == binding.endpoint
+            || (binding.pin != 0 && r == binding.pin);
+        }
         for (unsigned j = 0; j < p.candidates[c].role_count; ++j) {
           reserved = reserved || r == p.candidates[c].exclusive_roles[j];
         }
