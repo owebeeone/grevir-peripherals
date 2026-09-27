@@ -46,6 +46,7 @@ constexpr bool normalize_model(P& p) {
   }
   for (auto& c : p.candidates) {
     if (c.key == 0 || c.configuration == 0 || !is_kind(c.timer, Kind::timer)
+        || c.counter_bits == 0
         || !c.frequency.positive() || c.count == 0 || c.count > c.endpoints.size()) { return false; }
     if (c.domain != 0 && (!is_kind(c.domain, Kind::domain) || c.setting == 0)) { return false; }
     if (c.domain == 0 && c.setting != 0) { return false; }
@@ -75,7 +76,8 @@ constexpr bool normalize_model(P& p) {
       if (a.key == b.key && a != b) { return false; }
       if (a.timer == b.timer && a.configuration == b.configuration
           && (a.frequency != b.frequency || a.waveform != b.waveform || a.source != b.source
-            || a.domain != b.domain || a.setting != b.setting)) { return false; }
+            || a.domain != b.domain || a.setting != b.setting
+            || a.counter_bits != b.counter_bits)) { return false; }
     }
   }
   std::sort(p.candidates.begin(), p.candidates.end(), candidate_less);

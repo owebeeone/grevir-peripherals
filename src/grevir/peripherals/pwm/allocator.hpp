@@ -44,15 +44,16 @@ constexpr Plan<R> solve(Problem<R, C, H, B> p, std::uint32_t budget = 100'000) {
     if (pin == nullptr || pin->kind != Kind::pin) { return fail(Status::model_error, r.key); }
   }
 
-  // Units are sorted by their least member key because requests are sorted.
+  // A module instance owns one complete timer. Its local uses are one unit.
   std::array<std::size_t, R> unit{};
   std::array<std::size_t, R> first{};
   std::size_t units = 0;
   for (std::size_t i = 0; i < R; ++i) {
     std::size_t found = units;
-    if (p.requests[i].group != 0) {
-      for (std::size_t j = 0; j < i; ++j) {
-        if (p.requests[j].group == p.requests[i].group) { found = unit[j]; break; }
+    for (std::size_t j = 0; j < i; ++j) {
+      if (p.requests[j].key.instance == p.requests[i].key.instance) {
+        found = unit[j];
+        break;
       }
     }
     if (found == units) { first[units++] = i; }
@@ -69,6 +70,8 @@ constexpr Plan<R> solve(Problem<R, C, H, B> p, std::uint32_t budget = 100'000) {
         if (e.request != r.key || e.pin != r.config.pin
             || !r.config.frequency.contains(c.frequency)
             || !at_most(e.step, r.config.step)
+            || (r.config.required_timer != 0 && r.config.required_timer != c.timer)
+            || r.config.counter_bits_at_least > c.counter_bits
             || (r.config.waveform != Waveform::any && r.config.waveform != c.waveform)
             || (r.config.source != Source::any && r.config.source != c.source)) { return false; }
       }

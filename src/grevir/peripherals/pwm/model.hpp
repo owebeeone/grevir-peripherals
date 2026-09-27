@@ -18,6 +18,7 @@ struct Candidate {
   unsigned key = 0;
   unsigned preference = 0;
   unsigned timer = 0;
+  unsigned counter_bits = 0;
   unsigned configuration = 0;
   Ratio frequency{};
   Waveform waveform = Waveform::any;
