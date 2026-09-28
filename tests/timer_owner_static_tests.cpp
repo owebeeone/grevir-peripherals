@@ -15,12 +15,12 @@ constexpr auto input = t::demands<Drive,Clock>();
 static_assert(input.size() == 3);
 static_assert(input[2].kind == t::UseKind::period_event);
 
-constexpr t::Candidate clock{
+constexpr t::Candidate<unsigned> clock{
   "clock", 11, 1, 0,
   {{{{"clock","tick"},t::UseKind::period_event,101,0}}}, 1,
   {401}, 1
 };
-constexpr t::Candidate drive{
+constexpr t::Candidate<unsigned> drive{
   "drive", 22, 2, 0,
   {{{{"drive","output"},t::UseKind::pwm,201,301},
     {{"drive","period"},t::UseKind::period_event,202,0}}}, 2,
@@ -33,9 +33,43 @@ constexpr auto reversed = t::compile(t::Problem{t::demands<Clock,Drive>(),
 static_assert(combined.ok() && reversed.ok());
 static_assert(combined.uses == reversed.uses);
 static_assert(combined.candidates == reversed.candidates);
-static_assert(combined.candidates[0] == clock.key);
-static_assert(combined.candidates[1] == drive.key);
-static_assert(combined.candidates[2] == drive.key);
+static_assert(combined.candidates[0] == clock.identity);
+static_assert(combined.candidates[1] == drive.identity);
+static_assert(combined.candidates[2] == drive.identity);
+
+struct ModeIdentity {
+  unsigned mode = 0;
+  constexpr auto operator<=>(const ModeIdentity&) const = default;
+};
+constexpr auto clock_demand = t::demands<Clock>()[0];
+constexpr auto mode_candidate = [](unsigned mode) {
+  t::Candidate<ModeIdentity> candidate{};
+  candidate.owner = clock_demand.key.owner;
+  candidate.identity = {mode};
+  candidate.timer = 1;
+  candidate.bindings[0] = {clock_demand.key,t::UseKind::period_event,101,0};
+  candidate.binding_count = 1;
+  return candidate;
+};
+// Equal preference and timer still select the same structural identity when
+// backend candidate enumeration is reversed.
+constexpr auto first_mode = mode_candidate(1);
+constexpr auto second_mode = mode_candidate(2);
+constexpr auto modes_forward = t::compile(t::Problem{t::demands<Clock>(),
+  std::array{first_mode,second_mode},std::array<unsigned,0>{}});
+constexpr auto modes_reverse = t::compile(t::Problem{t::demands<Clock>(),
+  std::array{second_mode,first_mode},std::array<unsigned,0>{}});
+static_assert(modes_forward.ok() && modes_reverse.ok());
+static_assert(modes_forward.candidates == modes_reverse.candidates);
+static_assert(modes_forward.candidates[0] == ModeIdentity{1});
+constexpr auto duplicate_identity = [] {
+  auto candidate = first_mode;
+  candidate.timer = 2;
+  return candidate;
+}();
+static_assert(t::compile(t::Problem{t::demands<Clock>(),
+  std::array{first_mode,duplicate_identity},std::array<unsigned,0>{}})
+  .diagnostic.status == t::Status::invalid_model);
 
 constexpr auto event_only = t::compile(t::Problem{
   t::demands<Clock>(),std::array{clock},std::array<unsigned,0>{}});
@@ -88,6 +122,6 @@ static_assert(t::compile(t::Problem{input,
   == t::Status::conflict);
 
 constexpr auto empty = t::compile(t::Problem{
-  std::array<t::UseDemand,0>{},std::array<t::Candidate,0>{},std::array<unsigned,0>{}});
+  std::array<t::UseDemand,0>{},std::array<t::Candidate<unsigned>,0>{},std::array<unsigned,0>{}});
 static_assert(empty.ok() && empty.candidates.empty());
 }

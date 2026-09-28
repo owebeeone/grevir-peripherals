@@ -7,7 +7,6 @@
 #include <grevir/base/compat/compare.hpp>
 #include <grevir/base/compat/cstdint.hpp>
 #include <grevir/base/compat/string_view.hpp>
-#include <grevir/base/compat/tuple.hpp>
 
 namespace grevir::timer {
 
@@ -33,8 +32,11 @@ constexpr auto demands() {
 }
 
 // The backend guarantees each binding's behavior and carries its typed
-// configuration payload beside this common envelope. Resources are canonical
-// identities supplied by that backend; zero means no pin/source/role.
+// configuration payload beside this common envelope. Identity is the complete
+// value identity of that payload and its bindings, not a hash or array index.
+// It must support equality and ordering; its default value means no selection.
+// Resources are canonical identities supplied by the backend; zero means no
+// pin/source/role.
 struct UseBinding {
   UseKey key{};
   UseKind kind = UseKind::pwm;
@@ -42,9 +44,10 @@ struct UseBinding {
   unsigned pin = 0;
   constexpr bool operator==(const UseBinding&) const = default;
 };
+template <typename Identity>
 struct Candidate {
   std::string_view owner{};
-  unsigned key = 0;
+  Identity identity{};
   unsigned timer = 0;
   unsigned preference = 0;
   std::array<UseBinding, 4> bindings{};
@@ -53,9 +56,9 @@ struct Candidate {
   unsigned role_count = 0;
   constexpr bool operator==(const Candidate&) const = default;
 };
-template <typename Payload>
+template <typename Payload, typename Identity>
 struct Choice {
-  Candidate candidate;
+  Candidate<Identity> candidate;
   Payload payload;
 };
 
@@ -68,18 +71,18 @@ struct Diagnostic {
   UseKey use{};
   unsigned detail = 0;
 };
-template <std::size_t D>
+template <std::size_t D, typename Identity>
 struct Plan {
   Diagnostic diagnostic{};
   std::array<UseKey, D> uses{};
-  std::array<unsigned, D> candidates{};
+  std::array<Identity, D> candidates{};
   std::uint32_t visited = 0;
   constexpr bool ok() const { return diagnostic.status == Status::success; }
 };
-template <std::size_t D, std::size_t C, std::size_t R>
+template <std::size_t D, std::size_t C, std::size_t R, typename Identity>
 struct Problem {
   std::array<UseDemand, D> demands;
-  std::array<Candidate, C> candidates;
+  std::array<Candidate<Identity>, C> candidates;
   std::array<unsigned, R> reservations;
 };
 
@@ -92,9 +95,9 @@ constexpr bool valid_component(std::string_view name) {
   return true;
 }
 
-template <typename P>
-constexpr bool valid_candidate(const P& problem, const Candidate& c) {
-  if (!valid_component(c.owner) || c.key == 0 || c.timer == 0
+template <typename P, typename Identity>
+constexpr bool valid_candidate(const P& problem, const Candidate<Identity>& c) {
+  if (!valid_component(c.owner) || c.identity == Identity{} || c.timer == 0
       || c.binding_count == 0 || c.binding_count > c.bindings.size()
       || c.role_count > c.exclusive_roles.size()) { return false; }
   for (unsigned i = 0; i < c.binding_count; ++i) {
@@ -120,8 +123,8 @@ constexpr bool valid_candidate(const P& problem, const Candidate& c) {
   return true;
 }
 
-template <typename P>
-constexpr bool fits(const P& p, const Candidate& c, std::string_view owner) {
+template <typename P, typename Identity>
+constexpr bool fits(const P& p, const Candidate<Identity>& c, std::string_view owner) {
   if (c.owner != owner) { return false; }
   unsigned matched = 0;
   for (const auto& demand : p.demands) {
@@ -138,8 +141,8 @@ constexpr bool fits(const P& p, const Candidate& c, std::string_view owner) {
   return matched == c.binding_count;
 }
 
-template <typename F>
-constexpr void each_resource(const Candidate& candidate, F&& f) {
+template <typename Identity, typename F>
+constexpr void each_resource(const Candidate<Identity>& candidate, F&& f) {
   f(candidate.timer);
   for (unsigned i = 0; i < candidate.binding_count; ++i) {
     f(candidate.bindings[i].endpoint);
@@ -150,7 +153,8 @@ constexpr void each_resource(const Candidate& candidate, F&& f) {
   }
 }
 
-constexpr bool compatible(const Candidate& a, const Candidate& b) {
+template <typename Identity>
+constexpr bool compatible(const Candidate<Identity>& a, const Candidate<Identity>& b) {
   bool overlaps = false;
   each_resource(a, [&](unsigned left) {
     each_resource(b, [&](unsigned right) { overlaps |= left == right; });
@@ -158,19 +162,22 @@ constexpr bool compatible(const Candidate& a, const Candidate& b) {
   return !overlaps;
 }
 
-template <std::size_t D, std::size_t C, std::size_t R>
-constexpr Plan<D> solve(Problem<D, C, R> p, std::uint32_t budget = 100'000) {
-  Plan<D> result;
+template <std::size_t D, std::size_t C, std::size_t R, typename Identity>
+constexpr Plan<D, Identity> solve(Problem<D, C, R, Identity> p,
+    std::uint32_t budget = 100'000) {
+  Plan<D, Identity> result;
   std::sort(p.demands.begin(), p.demands.end(),
     [](const auto& a, const auto& b) { return a.key < b.key; });
   std::sort(p.candidates.begin(), p.candidates.end(), [](const auto& a, const auto& b) {
-    return std::tuple{a.owner, a.preference, a.timer, a.key}
-      < std::tuple{b.owner, b.preference, b.timer, b.key};
+    if (a.owner != b.owner) { return a.owner < b.owner; }
+    if (a.preference != b.preference) { return a.preference < b.preference; }
+    if (a.timer != b.timer) { return a.timer < b.timer; }
+    return a.identity < b.identity;
   });
   for (std::size_t i = 0; i < D; ++i) { result.uses[i] = p.demands[i].key; }
   const auto fail = [&](Status status, UseKey use = {}, unsigned detail = 0) {
     result.diagnostic = {status,use,detail};
-    result.candidates.fill(0);
+    result.candidates.fill(Identity{});
     return result;
   };
   for (std::size_t i = 0; i < D; ++i) {
@@ -185,7 +192,7 @@ constexpr Plan<D> solve(Problem<D, C, R> p, std::uint32_t budget = 100'000) {
   for (std::size_t i = 0; i < C; ++i) {
     if (!valid_candidate(p, p.candidates[i])) { return fail(Status::invalid_model); }
     for (std::size_t j = 0; j < i; ++j) {
-      if (p.candidates[i].key == p.candidates[j].key) {
+      if (p.candidates[i].identity == p.candidates[j].identity) {
         return fail(Status::invalid_model);
       }
     }
@@ -228,7 +235,7 @@ constexpr Plan<D> solve(Problem<D, C, R> p, std::uint32_t budget = 100'000) {
     return fail(search.exhausted ? Status::exhausted : Status::conflict);
   }
   for (std::size_t i = 0; i < D; ++i) {
-    result.candidates[i] = p.candidates[search.selected[unit[i]]].key;
+    result.candidates[i] = p.candidates[search.selected[unit[i]]].identity;
   }
   return result;
 }
